@@ -1,24 +1,27 @@
-# Implementing a Language in C
+# Implémenter un langage en C
 
-In this post we're implementing a small programming language in C. The
-language, which I extended from
+Dans cet article, nous implémentons un petit langage de programmation en C. Le
+langage, que j'ai étendu à partir de
 [**tinyc**](http://www.iro.umontreal.ca/~felipe/IFT2030-Automne2002/Complements/tinyc.c)
-by **Marc Feeley**, is a statement language. I added a print statement to the
-language (which means extending the tokenizer and the parser, and adding a new
-machine instruction and modifying the virtual machine interpreter accordingly).
-I also removed the restriction that only one-symbol pre-defined identifiers are
-allowed; this again leads to changes in the tokenizer, the parser, the
-compiler, and the virtual machine interpreter. Moreover, as will be seen, I
-added an abstract syntax tree printer and an abstract syntax interpreter to the
-program.
+de **Marc Feeley**, est un langage d'instructions. J'ai ajouté une
+instruction `print` au langage (ce qui signifie étendre l'analyseur lexical
+(tokenizer) et l'analyseur syntaxique (parser), ajouter une nouvelle instruction
+machine et modifier l'interpréteur de machine virtuelle en conséquence). J'ai
+aussi supprimé la restriction qui n'autorisait que des identifiants
+prédéfinis à un seul symbole ; là encore, cela a entraîné des modifications
+dans l'analyseur lexical, l'analyseur syntaxique, le compilateur et
+l'interpréteur de machine virtuelle. De plus, comme on le verra, j'ai ajouté
+au programme un afficheur d'arbre de syntaxe abstraite et un interpréteur
+d'arbre de syntaxe abstraite.
 
-In this language a program is simply a statement, where a statement can be a
-condition statement, a loop statement, a print statement, an empty statement,
-or zero or more statements enclosed in brackets. Each statement is followed by
-a semi-colon. To be precise, the definition is shown below in the BNF grammar
-of the language. The non-terminals are enclosed in `<>` while the terminals are
-shown between double quotes. Note that zero or more is simply enclosed inside a
-pair of brackets (instead of the usual `*`).
+Dans ce langage, un programme est simplement une instruction, où une
+instruction peut être une instruction conditionnelle, une instruction de boucle,
+une instruction d'affichage, une instruction vide, ou zéro ou plusieurs
+instructions entre accolades. Chaque instruction est suivie d'un point-virgule.
+Pour être précis, la définition est donnée ci-dessous dans la grammaire BNF du
+langage. Les non-terminaux sont entre `<>` tandis que les terminaux sont
+montrés entre guillemets. Notez que « zéro ou plusieurs » est simplement mis
+entre une paire d'accolades (au lieu de l'habituel `*`).
 
 ```
  <program>   := <statement>
@@ -46,11 +49,11 @@ pair of brackets (instead of the usual `*`).
  <num>        := <an_unsigned_decimal_integer>
 ```
 
-#### The Tokenizer
+#### L'analyseur lexical (Tokenizer)
 
-As is known, the tokenizer makes available the current token and makes possible
-moving to the next token. In general, a token has a type and a value. In our
-tokenizer, we have the following token types
+Comme on le sait, l'analyseur lexical rend disponible le jeton (token) courant
+et permet de passer au jeton suivant. En général, un jeton a un type et une
+valeur. Dans notre analyseur lexical, nous avons les types de jetons suivants
 
 ```c
 enum
@@ -75,29 +78,31 @@ enum
 };
 ```
 
-Except `EOI_SYM` to help with parsing later, the other token types are all
-obtained from the grammar. Every terminal has a token type, and moreover the
-non-terminals that directly generate terminals (`<id>` and `<int>`) also belong
-to some token types. The latter two have associated values which we'll keep in
-an integer and a string:
+À l'exception de `EOI_SYM`, qui aide pour l'analyse syntaxique ultérieure, tous
+les autres types de jetons proviennent de la grammaire. Chaque terminal a un
+type de jeton, et de plus les non-terminaux qui génèrent directement des
+terminaux (`<id>` et `<int>`) appartiennent aussi à certains types de jetons.
+Ces deux derniers ont des valeurs associées que nous conserverons dans un
+entier et une chaîne de caractères :
 
 ```c
 int num_val;
 char id_name[100];
 ```
 
-On the other hand, the current token (more precisely the current token type)
-and getting the next token type are realized by a variable and a function:
+D'autre part, le jeton courant (plus précisément le type de jeton courant) et
+l'obtention du type de jeton suivant sont réalisés par une variable et une
+fonction :
 
 ```c
 int sym;
 void next_sym()
 {
-  // To be filled in
+  // À compléter
 }
 ```
 
-In order to signal a syntax error we'll have the function
+Afin de signaler une erreur de syntaxe, nous aurons la fonction
 
 ```c
 void syntax_error(char *msg)
@@ -107,18 +112,18 @@ void syntax_error(char *msg)
 }
 ```
 
-Now let's write the tokenizer, i.e. implement `next_sym`. The basic idea is
-to examine the current character and update the token type kept in `sym`, and
-then move on to the next character. In the case of numbers and identifiers the
-characters are accumulated and put in `num_val` and `id_name` respectively. So
-we'll have first of all
+Écrivons maintenant l'analyseur lexical, c'est-à-dire implémentons
+`next_sym`. L'idée de base est d'examiner le caractère courant et de mettre à
+jour le type de jeton stocké dans `sym`, puis de passer au caractère suivant.
+Dans le cas des nombres et des identifiants, les caractères sont accumulés et
+mis respectivement dans `num_val` et `id_name`. Nous aurons donc tout d'abord
 
 ```c
 int ch = ' ';
 void next_ch() { ch = getchar(); }
 ```
 
-Space characters are simply ignored, and we'll have
+Les espaces sont simplement ignorés, et nous aurons
 
 ```c
 void next_sym()
@@ -130,12 +135,12 @@ again:
   case '\n':
     next_ch();
     goto again;
-  // To be continued
+  // À continuer
   }
 }
 ```
 
-To continue, when `EOF` is reached, `sym` is updated to `EOI_SYM`.
+Pour continuer, quand `EOF` est atteint, `sym` est mis à jour à `EOI_SYM`.
 
 ```c
 void next_sym()
@@ -147,13 +152,13 @@ again:
   case EOF:
     sym = EOI_SYM;
     break;
-  // To be continued
+  // À continuer
   }
 }
 ```
 
-In the case of `+`, `-`, `=`, and so on, `sym` is updated accordingly, and the
-next character is made available by a call to `next_ch()`.
+Dans le cas de `+`, `-`, `=`, etc., `sym` est mis à jour en conséquence, et le
+caractère suivant est rendu disponible par un appel à `next_ch()`.
 
 ```c
 void next_sym()
@@ -198,15 +203,15 @@ again:
     next_ch();
     sym = EQUAL_SYM;
     break;
-  // To be continued
+  // À continuer
   }
 }
 ```
 
-The remaining case is either a number, an identifier, or a syntax error. If the
-current character is a digit, we simply accumulate all the following digits,
-convert the token to a number and save it in `num_val`, and update `sym` to
-`NUM_SYM`:
+Le cas restant est soit un nombre, soit un identifiant, soit une erreur de
+syntaxe. Si le caractère courant est un chiffre, nous accumulons simplement
+tous les chiffres suivants, convertissons le jeton en nombre et le stockons
+dans `num_val`, et mettons à jour `sym` à `NUM_SYM` :
 
 ```c
 void next_sym()
@@ -226,27 +231,28 @@ again:
       }
       sym = NUM_SYM;
     }
-    // To be continued
+    // À continuer
   }
 }
 ```
 
-If on the other hand the current character is an alphabet, we're dealing with
-an identifier. Here, there is a subtlety: The identifier could be one of the
-words in our language, such as `do`, `else`, and so on. Thus we'll have
+Si par contre le caractère courant est une lettre, nous avons affaire à un
+identifiant. Ici, il y a une subtilité : l'identifiant pourrait être l'un des
+mots de notre langage, comme `do`, `else`, etc. Ainsi, nous aurons
 
 ```c
 char *words[] = {"do", "else", "if", "while", "print", NULL};
 ```
 
-Note the order that we have put the words: the order of `do` match that of
-`DO_SYM`, `else` `ELSE_SYM`, and so on. This is so, so that after having
-accumulated the characters of an identifier to `id_name` (ended properly with
-`\0`), we can reset `sym` to `0` which correponds to the index of `do` in
-`words` (and the index of `DO_SYM`). Then we can simply increment `sym` to
-check all the words which at the same time makes sure `sym` have the correct
-value if a word has indeed been seen. Otherwise we have seen an identifier and
-we simply update `sym` to `ID_SYM`. Thus
+Notez l'ordre dans lequel nous avons mis les mots : l'ordre de `do` correspond
+à celui de `DO_SYM`, `else` à `ELSE_SYM`, et ainsi de suite. Il en est ainsi
+pour qu'après avoir accumulé les caractères d'un identifiant dans `id_name`
+(correctement terminé par `\0`), nous puissions remettre `sym` à `0`, ce qui
+correspond à l'indice de `do` dans `words` (et à l'indice de `DO_SYM`). Puis
+nous pouvons simplement incrémenter `sym` pour vérifier tous les mots, ce qui
+en même temps garantit que `sym` a la bonne valeur si un mot a effectivement
+été vu. Sinon, nous avons vu un identifiant et nous mettons simplement `sym`
+à `ID_SYM`. Ainsi
 
 ```c
 void next_sym()
@@ -272,12 +278,12 @@ again:
       if (words[sym] == NULL)
         sym = ID_SYM;
     }
-    // .. To be continued
+    // .. À continuer
   }
 }
 ```
 
-Anything else is a syntax error in the language, and we have
+Tout le reste est une erreur de syntaxe dans le langage, et nous avons
 
 ```c
 void next_sym()
@@ -295,8 +301,9 @@ again:
 }
 ```
 
-The tokenizer is done. The following function that prints all the tokens should
-be written as we were extending the tokenizer:
+L'analyseur lexical est terminé. La fonction suivante, qui affiche tous les
+jetons, devrait être écrite au fur et à mesure que nous étendions l'analyseur
+lexical :
 
 ```c
 void print_tokens()
@@ -360,7 +367,7 @@ again:
 }
 ```
 
-Now a simple demonstration of `{ i=1; while (i<100) i=i+i; }`:
+Voici une simple démonstration avec `{ i=1; while (i<100) i=i+i; }` :
 
 ```
 LBRA_SYM
@@ -384,11 +391,11 @@ RBRA_SYM
 EOI_SYM
 ```
 
-#### The Parser
+#### L'analyseur syntaxique (Parser)
 
-In order to write the parser we'll first need to give names to the semantic
-constructs in the language, which is done by going through the grammar and
-labelling the productions. The following list is complete:
+Pour écrire l'analyseur syntaxique, nous aurons d'abord besoin de donner des
+noms aux constructions sémantiques du langage, ce qui se fait en parcourant la
+grammaire et en étiquetant les productions. La liste suivante est complète :
 
 ```c
 enum
@@ -411,10 +418,10 @@ enum
 };
 ```
 
-Next, we'll need a data structure to hold not only the type of a construct but
-also its components. We'll need at maximum three pieces of data (the `IFELSE`
-construct) and the following data structure is adequate for all the constructs
-in the language:
+Ensuite, nous aurons besoin d'une structure de données pour contenir non
+seulement le type d'une construction mais aussi ses composants. Nous aurons
+besoin d'au maximum trois données (la construction `IFELSE`) et la structure de
+données suivante est adéquate pour toutes les constructions du langage :
 
 ```c
 typedef struct node
@@ -430,7 +437,7 @@ typedef struct node
 } node;
 ```
 
-A new `node` is created by calling the following function:
+Un nouveau `node` est créé en appelant la fonction suivante :
 
 ```c
 node *new_node(int k)
@@ -441,8 +448,8 @@ node *new_node(int k)
 }
 ```
 
-At certain points during the parsing we'll simply need to consume an expected
-token type and the following function is useful:
+À certains moments de l'analyse syntaxique, nous aurons simplement besoin de
+consommer un type de jeton attendu, et la fonction suivante est utile :
 
 ```c
 void consume(int expected)
@@ -454,10 +461,11 @@ void consume(int expected)
 }
 ```
 
-The parser itself is made up of a set of possibly recursive functions calling each
-other according to the grammar. To start, `id` simply creates a new node of
-type `VAR` and copies over the content of `id_name`; it also makes the next
-token available by calling `next_sym`:
+L'analyseur syntaxique lui-même est constitué d'un ensemble de fonctions
+éventuellement récursives qui s'appellent les unes les autres selon la
+grammaire. Pour commencer, `id` crée simplement un nouveau nœud de type `VAR`
+et copie le contenu de `id_name` ; il rend aussi disponible le jeton suivant en
+appelant `next_sym` :
 
 ```c
 node *id()
@@ -469,7 +477,7 @@ node *id()
 }
 ```
 
-Next, `num` is likewise:
+Ensuite, `num` est similaire :
 
 ```c
 node *num()
@@ -481,9 +489,9 @@ node *num()
 }
 ```
 
-Next, according to its grammar, `term` decides which non-terminal to follow
-according to the current token type. Note that we need a forward declaration
-of `paren_expr()`.
+Ensuite, selon sa grammaire, `term` décide quel non-terminal suivre selon le
+type de jeton courant. Notez que nous avons besoin d'une déclaration anticipée
+de `paren_expr()`.
 
 ```c
 node *paren_expr();
@@ -499,11 +507,11 @@ node *term()
 }
 ```
 
-Next in line is `sum`. According to its grammar, there're three productions
-none of which begins with a terminal. However, we can expand an addition or a
-subtraction and see that a term always needs to be parsed first. Subsequently
-it's zero or more additions or subtractions which translates to a loop
-structure. Thus
+Vient ensuite `sum`. Selon sa grammaire, il y a trois productions dont aucune
+ne commence par un terminal. Cependant, nous pouvons développer une addition ou
+une soustraction et voir qu'un terme doit toujours être analysé en premier.
+Ensuite, il y a zéro ou plusieurs additions ou soustractions, ce qui se traduit
+par une structure de boucle. Ainsi
 
 ```c
 node *sum()
@@ -521,8 +529,9 @@ node *sum()
 }
 ```
 
-Let's pause a bit here and try to visualize the work of the parser. Given an
-expression such as `1 + 2 - 3` we'll get the parsed tree
+Faisons une pause ici et essayons de visualiser le travail de l'analyseur
+syntaxique. Étant donné une expression comme `1 + 2 - 3`, nous obtiendrons
+l'arbre analysé
 
 ```
     +
@@ -532,7 +541,7 @@ expression such as `1 + 2 - 3` we'll get the parsed tree
     2     3
 ```
 
-The next one is `test`:
+Le suivant est `test` :
 
 ```c
 node *test()
@@ -550,14 +559,15 @@ node *test()
 }
 ```
 
-Now, `expr`, which is a bit tricky. Even though an identifier seems to point to
-the second production, if we expand the first production, `<test>`, we see that
-it may start with an identifier as well. In the following, we will simply check
-if the current token is not an identifier, in which case we parse the first
-production by returning what will be parsed by `test`. Otherwise, we call
-`test` and check if we have an identifier followed by the equal sign, in which
-case we are parsing the `SET` clause, and if not, it's also what has been
-parsed by `test`.
+Maintenant, `expr`, qui est un peu délicat. Même si un identifiant semble
+pointer vers la deuxième production, si nous développons la première
+production, `<test>`, nous voyons qu'elle peut aussi commencer par un
+identifiant. Dans ce qui suit, nous vérifierons simplement si le jeton courant
+n'est pas un identifiant, auquel cas nous analysons la première production en
+renvoyant ce qui sera analysé par `test`. Sinon, nous appelons `test` et
+vérifions si nous avons un identifiant suivi du signe égal, auquel cas nous
+analysons la clause `SET`, et sinon, c'est aussi ce qui a été analysé par
+`test`.
 
 ```c
 node *expr()
@@ -578,7 +588,7 @@ node *expr()
 }
 ```
 
-Next, `paren_expr`, it's probably the simplest one:
+Ensuite, `paren_expr`, c'est probablement la plus simple :
 
 ```c
 node *paren_expr()
@@ -591,16 +601,17 @@ node *paren_expr()
 }
 ```
 
-Next is `statement`, which has eight productions and is therefore the longest
-function. Seven of them start with a distinct terminal indicating which
-production is to be parsed (even though there're two conditional statements,
-one can be distinguished from the other by the `else` terminal). Most of them
-are straight-forward, except the sequence production. It translates into a loop
-structure that keeps parsing and attaching what has been parsed as a component
-to what will be parsed. We may roughly see how it works by looking at an
-example: The sequence `{ i=1; while (i<100) i=i+i; }` will be parsed by the
-parser into the tree below, the lower tree being parsed first and glued to the
-upper tree as a branch.
+Ensuite vient `statement`, qui a huit productions et est donc la fonction la
+plus longue. Sept d'entre elles commencent par un terminal distinct indiquant
+quelle production doit être analysée (même s'il y a deux instructions
+conditionnelles, on peut distinguer l'une de l'autre grâce au terminal `else`).
+La plupart d'entre elles sont simples, à l'exception de la production de
+séquence. Elle se traduit par une structure de boucle qui continue à analyser
+et à rattacher ce qui a été analysé comme un composant à ce qui va être
+analysé. Nous pouvons approximativement voir comment cela fonctionne en
+regardant un exemple : la séquence `{ i=1; while (i<100) i=i+i; }` sera
+analysée par l'analyseur syntaxique en l'arbre ci-dessous, l'arbre inférieur
+étant analysé en premier et collé à l'arbre supérieur comme une branche.
 
 ```
          SEQ
@@ -679,7 +690,7 @@ node *statement()
 }
 ```
 
-Finally, `program`. We need to remember to consume `EOF_SYM`.
+Enfin, `program`. Nous devons nous souvenir de consommer `EOF_SYM`.
 
 ```c
 node *program()
@@ -691,7 +702,7 @@ node *program()
 }
 ```
 
-And a function that initiates the parsing:
+Et une fonction qui lance l'analyse syntaxique :
 
 ```c
 node *parse()
@@ -702,8 +713,8 @@ node *parse()
 }
 ```
 
-The following function prints the abstract syntrax tree to give us roughly an
-idea of how it looks like.
+La fonction suivante affiche l'arbre de syntaxe abstraite pour nous donner une
+idée approximative de son apparence.
 
 ```c
 void print_ast(node *x)
@@ -786,16 +797,17 @@ void print_ast(node *x)
 }
 ```
 
-As an example, we may see the output of `{ i=1; while (i<100) i=i+i; }`:
+À titre d'exemple, nous pouvons voir la sortie de
+`{ i=1; while (i<100) i=i+i; }` :
 
 ```
 PROG SEQ SEQ EMPTY EXPR SET VAR "i" CST "1" WHILE VAR "i" LT CST "100"
 EXPR SET VAR "i" VAR "i" ADD VAR "i"
 ```
 
-Here we see the main node `PROG` that contains a sequence. As we discussed how
-a sequence was parsed, i.e. roughly `{ i=1; while (i<100) i=i+i; }` will parsed
-into
+Ici, nous voyons le nœud principal `PROG` qui contient une séquence. Comme nous
+avons discuté de la façon dont une séquence était analysée, c'est-à-dire
+approximativement `{ i=1; while (i<100) i=i+i; }` sera analysé en
 
 ```
          SEQ
@@ -805,22 +817,24 @@ into
 EMPTY  EXPR
 ```
 
-which was reflected in the output.
+ce qui se reflétait dans la sortie.
 
-#### The Interpreter
+#### L'interpréteur
 
-This language is a very small subset of the C language and the semantics of its
-statements are clear. The only point that should be discussed is scoping.
-Usually brackets open a new scope and interpretation should take scoping into
-account properly. In the current language, however, we'll simply treat brackets
-as a way to group statements, and accordingly there's only one global scope,
-instead of different local scopes for different pair of matching brackets. As
-an example, in our language the statement `{a = 3; {a = a + a;}; a = a + a; print(a)}` will print `12`, instead of `6`; the inner pair of brackets does
-update the variable `a`.
+Ce langage est un très petit sous-ensemble du langage C et la sémantique de ses
+instructions est claire. Le seul point qui doit être discuté est la portée
+(scoping). Habituellement, les accolades ouvrent une nouvelle portée et
+l'interprétation devrait tenir compte correctement de la portée. Dans le
+langage actuel, cependant, nous traiterons simplement les accolades comme un
+moyen de grouper des instructions, et en conséquence il n'y a qu'une seule
+portée globale, au lieu de différentes portées locales pour chaque paire
+d'accolades correspondantes. À titre d'exemple, dans notre langage,
+l'instruction `{a = 3; {a = a + a;}; a = a + a; print(a)}` affichera `12` au
+lieu de `6` ; la paire interne d'accolades met bien à jour la variable `a`.
 
-Thus, instead of creating new local environments when entering brackets we will
-have a global environment that keeps identifiers and their values. The
-environment will be a list
+Ainsi, au lieu de créer de nouveaux environnements locaux en entrant dans les
+accolades, nous aurons un environnement global qui garde les identifiants et
+leurs valeurs. L'environnement sera une liste
 
 ```c
 typedef struct list
@@ -833,8 +847,8 @@ typedef struct list
 list *env;
 ```
 
-We want to be able to get an identifier, which is an element in the list, and
-also be able to look up the value of a given identifier:
+Nous voulons pouvoir obtenir un identifiant, qui est un élément de la liste, et
+aussi pouvoir chercher la valeur d'un identifiant donné :
 
 ```c
 list *get_id(char *id)
@@ -863,10 +877,10 @@ int lookup_value(char *id)
 }
 ```
 
-Finally, we want to be able to add an identifier and its value to the global
-environment. Because of our scoping rule, if the identifier already exists its
-value will simply be replaced by the new value; otherwise the new name-value
-pair will be added to the beginning of the list.
+Enfin, nous voulons pouvoir ajouter un identifiant et sa valeur à
+l'environnement global. À cause de notre règle de portée, si l'identifiant
+existe déjà, sa valeur sera simplement remplacée par la nouvelle valeur ;
+sinon, la nouvelle paire nom-valeur sera ajoutée au début de la liste.
 
 ```c
 void add_id(char *id, int value)
@@ -886,8 +900,9 @@ void add_id(char *id, int value)
 }
 ```
 
-Now the interpreter. According to our grammar there should be three functions,
-`eval_program`, `eval_statement`, and `eval_expr`. First, `eval-expr`:
+Maintenant, l'interpréteur. Selon notre grammaire, il devrait y avoir trois
+fonctions, `eval_program`, `eval_statement`, et `eval_expr`. D'abord,
+`eval_expr` :
 
 ```c
 int eval_expr(node *x)
@@ -919,7 +934,7 @@ int eval_expr(node *x)
 }
 ```
 
-Next, `eval_statement`:
+Ensuite, `eval_statement` :
 
 ```c
 void eval_statement(node *x)
@@ -963,7 +978,7 @@ void eval_statement(node *x)
 }
 ```
 
-Finally, `eval_program`:
+Enfin, `eval_program` :
 
 ```c
 void eval_program(node *x)
@@ -979,7 +994,8 @@ void eval_program(node *x)
 }
 ```
 
-Let's run the interpreter on the program `{ i=1; j = 10; while (i<100) print(i=i+j); }`
+Exécutons l'interpréteur sur le programme
+`{ i=0; j = 10; while (i<100) print(i=i+j); }`
 
 ```
 11
@@ -994,11 +1010,11 @@ Let's run the interpreter on the program `{ i=1; j = 10; while (i<100) print(i=i
 101
 ```
 
-#### The Compiler
+#### Le compilateur
 
-A compiler translates a program in our language into a set of bytecote
-instructions that will subsequently be interpreted. Each instruction is
-associated with a number, and the set of instructions that will be used is
+Un compilateur traduit un programme de notre langage en un ensemble
+d'instructions en bytecode qui seront ensuite interprétées. Chaque instruction
+est associée à un nombre, et l'ensemble d'instructions qui sera utilisé est
 
 ```c
 enum
@@ -1018,20 +1034,21 @@ enum
 };
 ```
 
-The interpretation of the bytecode will be carried out by a stack virtual
-machine, starting from the first instruction, with a stack holding computation
-values. In addition, there will be two additional arrays to keep variables and
-their associated values. Each variable will be put into a specific location on
-one array, and the value associated to the variable will be put into the
-corresponding location on the other array. The location number will be used as
-a bytecode instruction.
+L'interprétation du bytecode sera effectuée par une machine virtuelle à pile,
+à partir de la première instruction, avec une pile qui contient les valeurs de
+calcul. En outre, il y aura deux tableaux supplémentaires pour garder les
+variables et leurs valeurs associées. Chaque variable sera placée à un
+emplacement spécifique sur un tableau, et la valeur associée à la variable sera
+placée à l'emplacement correspondant sur l'autre tableau. Le numéro
+d'emplacement sera utilisé comme une instruction de bytecode.
 
-Please note that we are operating at a very low level.
+Veuillez noter que nous opérons à un très bas niveau.
 
-To start, the instructions are put into an array called `object`. Since we'll
-keep pushing the instructions on top of the array, we need a pointer, `here`.
-The function `g` simply puts a given bytecode on top of the code array and
-moves up one element.
+Pour commencer, les instructions sont placées dans un tableau appelé
+`object`. Comme nous allons pousser continuellement les instructions sur le
+dessus du tableau, nous avons besoin d'un pointeur, `here`. La fonction `g`
+met simplement un bytecode donné sur le dessus du tableau de code et monte
+d'un élément.
 
 ```c
 typedef char code;
@@ -1040,9 +1057,9 @@ code object[1000], *here = object;
 void g(code c) { *here++ = c; }
 ```
 
-As we have said, there are two arrays holding the variables and their
-associated values. We're restricting to only maximum a hundred names, and
-therefore a hundred values.
+Comme nous l'avons dit, il y a deux tableaux contenant les variables et leurs
+valeurs associées. Nous nous restreignons à un maximum d'une centaine de noms,
+et donc à une centaine de valeurs.
 
 ```c
 char names[100][100], (*namespt)[100] = names;
@@ -1050,10 +1067,10 @@ char names[100][100], (*namespt)[100] = names;
 int globals[100];
 ```
 
-An important operation on `names` is getting the index of a variable. If the
-variable is already in the array, its index will be returned; otherwise the
-variable is put on top of the array and the index of the top element is
-returned:
+Une opération importante sur `names` est l'obtention de l'indice d'une
+variable. Si la variable est déjà dans le tableau, son indice sera renvoyé ;
+sinon, la variable est placée sur le dessus du tableau et l'indice de
+l'élément du dessus est renvoyé :
 
 ```c
 int get_index(char *name)
@@ -1071,8 +1088,8 @@ int get_index(char *name)
 }
 ```
 
-Let's move on to generating the code. We'll write a function called `c` that
-takes an abstract syntax tree and generates the corresponding code.
+Passons à la génération du code. Nous écrirons une fonction appelée `c` qui
+prend un arbre de syntaxe abstraite et génère le code correspondant.
 
 ```c
 void c(node *x)
@@ -1080,13 +1097,13 @@ void c(node *x)
 
   switch (x->kind)
   {
-    // To be continued
+    // À continuer
   }
 }
 ```
 
-Since `PROG` is the containing node, let's work on that first. We need to
-generate the bytecode and put `IHALT` at the end. Thus,
+Puisque `PROG` est le nœud conteneur, travaillons d'abord sur celui-ci. Nous
+devons générer le bytecode et mettre `IHALT` à la fin. Ainsi,
 
 ```c
 void c(node *x)
@@ -1098,13 +1115,14 @@ void c(node *x)
       c(x->o1);
       g(IHALT);
       break;
-    // To be continued
+    // À continuer
   }
 }
 ```
 
-Now, according to the grammar of the language, there're eight different kinds
-of nodes that could be contained in a `PROG` node. The easiest one is `EMPTY`:
+Maintenant, selon la grammaire du langage, il y a huit types différents de
+nœuds qui pourraient être contenus dans un nœud `PROG`. Le plus facile est
+`EMPTY` :
 
 ```c
 void c(node *x)
@@ -1112,7 +1130,7 @@ void c(node *x)
 
   switch (x->kind)
   {
-    // To be continued
+    // À continuer
     case EMPTY:
       break;
     // ...
@@ -1120,9 +1138,9 @@ void c(node *x)
 }
 ```
 
-Let's pick `EXPR` as the next one. In this case a value is expected to be
-computed and put on the virtual machine stack, before being used. Thus we'll
-generate the instructions followed by the `IPOP` instruction.
+Prenons `EXPR` comme suivant. Dans ce cas, une valeur est censée être calculée
+et mise sur la pile de la machine virtuelle, avant d'être utilisée. Ainsi, nous
+générerons les instructions suivies de l'instruction `IPOP`.
 
 ```c
 void c(node *x)
@@ -1130,7 +1148,7 @@ void c(node *x)
 
   switch (x->kind)
   {
-    // To be continued
+    // À continuer
     case EXPR:
       c(x->o1);
       g(IPOP);
@@ -1140,9 +1158,9 @@ void c(node *x)
 }
 ```
 
-There're several possible expressions. Let's start with `VAR`. Given a
-variable, as there is already a value associated with it, we simply generate
-`IFETCH` and the index of the location of the variable:
+Il y a plusieurs expressions possibles. Commençons par `VAR`. Étant donné une
+variable, comme il y a déjà une valeur associée, nous générons simplement
+`IFETCH` et l'indice de l'emplacement de la variable :
 
 ```c
 void c(node *x)
@@ -1159,8 +1177,8 @@ void c(node *x)
 }
 ```
 
-Next, `CST`. In this case we generate `IPUSH` and the value to be put to the
-virtual machine stack:
+Ensuite, `CST`. Dans ce cas, nous générons `IPUSH` et la valeur à mettre sur la
+pile de la machine virtuelle :
 
 ```c
 void c(node *x)
@@ -1173,13 +1191,13 @@ void c(node *x)
       g(IPUSH);
       g(x->val);
       break;
-    // To be continued
+    // À continuer
     // ...
   }
 }
 ```
 
-Next are `ADD` and `SUB`:
+Ensuite viennent `ADD` et `SUB` :
 
 ```c
 void c(node *x)
@@ -1198,13 +1216,13 @@ void c(node *x)
       c(x->o2);
       g(ISUB);
       break;
-    // To be continued
+    // À continuer
     // ...
   }
 }
 ```
 
-`LT` is similar:
+`LT` est similaire :
 
 ```c
 void c(node *x)
@@ -1218,14 +1236,14 @@ void c(node *x)
       c(x->o2);
       g(ILT);
       break;
-    // To be continued
+    // À continuer
     // ...
   }
 }
 ```
 
-Finally, `SET`. Here we compute the value to be set first, then store it, then
-generate the index of the variable:
+Enfin, `SET`. Ici, nous calculons d'abord la valeur à définir, puis nous la
+stockons, puis nous générons l'indice de la variable :
 
 ```c
 void c(node *x)
@@ -1239,14 +1257,15 @@ void c(node *x)
       g(ISTORE);
       g(get_index(x->o1->id));
       break;
-    // To be continued
+    // À continuer
     // ...
   }
 }
 ```
 
-Now let's get back to the nodes that could be contained in the `PROG` node. We
-have implemented `EMPTY` and `EXPR`. The next easy one is `PRINT`:
+Revenons maintenant aux nœuds qui pourraient être contenus dans le nœud
+`PROG`. Nous avons implémenté `EMPTY` et `EXPR`. Le suivant facile est
+`PRINT` :
 
 ```c
 void c(node *x)
@@ -1259,13 +1278,13 @@ void c(node *x)
       c(x->o1);
       g(IPRINT);
       break;
-    // To be continued
+    // À continuer
     // ...
   }
 }
 ```
 
-`SEQ` is also straight-forward:
+`SEQ` est aussi simple :
 
 ```c
 void c(node *x)
@@ -1278,44 +1297,47 @@ void c(node *x)
       c(x->o1);
       c(x->o2);
       break;
-    // To be continued
+    // À continuer
     // ...
   }
 }
 ```
 
-Next, let's move on to `IF`. The key to translating this node is to use the
-instruction `IJZ`, meaning jump if zero. Before writing the code, we will look
-at an example, `if (1 < 10) print(10);`. Here the condition `1 < 10` will be
-translated into a series of instructions, which we'll mark `X` below:
+Ensuite, passons à `IF`. La clé pour traduire ce nœud est d'utiliser
+l'instruction `IJZ`, qui signifie « sauter si zéro » (jump if zero). Avant
+d'écrire le code, nous allons regarder un exemple, `if (1 < 10) print(10);`.
+Ici, la condition `1 < 10` sera traduite en une série d'instructions, que nous
+marquons `X` ci-dessous :
 
 ```
 ... |X| | |...
 ```
 
-`print(10)` must be translated too, but whether or not it should be executed
-depends on whether the condition is true (`1`), in other words the sequence of instructions should be skipped if the condition is false (`0`). To achieve
-this effect, we put `IJZ` followed by a hole, and generate the instructions
-for `print(10)`. The hole is to hold the number of instructions to be skipped.
-We can keep the following illustration in mind:
+`print(10)` doit aussi être traduit, mais que la séquence d'instructions doive
+ou non être exécutée dépend du fait que la condition est vraie (`1`), autrement
+dit la séquence d'instructions doit être sautée si la condition est fausse
+(`0`). Pour obtenir cet effet, nous mettons `IJZ` suivi d'un trou, et nous
+générons les instructions pour `print(10)`. Le trou est destiné à contenir le
+nombre d'instructions à sauter. Nous pouvons garder l'illustration suivante à
+l'esprit :
 
 ```
 ... |X|IJZ| |X|...
 ```
 
-To create a hole, we have the function
+Pour créer un trou, nous avons la fonction
 
 ```c
 code *hole() { return here++; }
 ```
 
-And to compute the number of steps:
+Et pour calculer le nombre d'étapes :
 
 ```c
 void fix(code *src, code *dst) { *src = dst - src; }
 ```
 
-The code for translating `IF` is:
+Le code pour traduire `IF` est :
 
 ```c
 void c(node *x)
@@ -1331,23 +1353,25 @@ void c(node *x)
       c(x->o2);
       fix(p1, here);
       break;
-    // To be continued
+    // À continuer
     // ...
   }
 }
 ```
 
-Next we will translate `IFELSE`. We'll use a concrete example, `if (1<10) print(1); else print(10);`, to follow along. The code for `1<10`, `print(1)`,
-and `print(10)` will need to be translated. In a general statement, one of the
-consequences will be skipped depending on the condition. Thus we will place
-a jump instruction and a hole in front of each. But the second jump is a simple
-jump. Thus we use the `IJMP` instruction.
+Ensuite, nous traduirons `IFELSE`. Nous utiliserons un exemple concret,
+`if (1<10) print(1); else print(10);`, pour suivre. Le code pour `1<10`,
+`print(1)` et `print(10)` devra être traduit. Dans une instruction générale,
+une des conséquences sera sautée selon la condition. Ainsi, nous placerons une
+instruction de saut et un trou devant chacune. Mais le deuxième saut est un
+saut simple. Nous utilisons donc l'instruction `IJMP`.
 
 ```
 ...|X|IJZ| |X|JMP| |X| |...
 ```
 
-The addresses to be kept in the hole need to be calculated at the right places:
+Les adresses à conserver dans les trous doivent être calculées aux bons
+endroits :
 
 ```c
 void c(node *x)
@@ -1367,19 +1391,20 @@ void c(node *x)
       c(x->o3);
       fix(p2, here);
       break;
-    // To be continued
+    // À continuer
     // ...
   }
 }
 ```
 
-Now translating `WHILE`. This works almost like a condition. We'll have
+Maintenant, traduisons `WHILE`. Cela fonctionne presque comme une condition.
+Nous aurons
 
 ```
 |X|IJZ| |X|IJMP|...
 ```
 
-We need to be careful with the calculation of the jumping addresses:
+Nous devons être prudents avec le calcul des adresses de saut :
 
 ```c
 void c(node *x)
@@ -1398,13 +1423,14 @@ void c(node *x)
       fix(hole(), p1);
       fix(p2, here);
       break;
-    // To be continued
+    // À continuer
     // ...
   }
 }
 ```
 
-Finally, `DOWHILE`. Here the `JNZ`, or jump if not zero, is used.
+Enfin, `DOWHILE`. Ici, `JNZ`, ou « sauter si non zéro » (jump if not zero),
+est utilisé.
 
 ```c
 void c(node *x)
@@ -1425,12 +1451,12 @@ void c(node *x)
 }
 ```
 
-#### The Virtual Machine Interpreter
+#### L'interpréteur de machine virtuelle
 
-The bytecode instructions generated by the compiler written above are
-interpreted by a stack virtual machine interpreter. There is a stack to hold
-computation values, and the instructions are to be interpreted from beginning
-to end.
+Les instructions en bytecode générées par le compilateur écrit ci-dessus sont
+interprétées par un interpréteur de machine virtuelle à pile. Il y a une pile
+pour contenir les valeurs de calcul, et les instructions doivent être
+interprétées du début à la fin.
 
 ```c
 void run()
@@ -1440,12 +1466,13 @@ void run()
 again:
   switch (*pc++)
   {
-    // To be continued ...
+    // À continuer ...
   }
 }
 ```
 
-The following instructions manipulate the stack or the value array directly:
+Les instructions suivantes manipulent directement la pile ou le tableau de
+valeurs :
 
 ```c
 void run()
@@ -1482,13 +1509,13 @@ again:
   case IPRINT:
     printf("%d\n", *--sp);
     goto again;
-    // To be continued ...
+    // À continuer ...
   }
 }
 ```
 
-The remaining instructions involve using the number of steps to jump when
-needed:
+Les instructions restantes impliquent l'utilisation du nombre d'étapes pour
+sauter quand c'est nécessaire :
 
 ```c
 void run()
@@ -1518,7 +1545,9 @@ again:
 }
 ```
 
-The virtual machine has been completed. Given a program, such as `{ i = 0; do { i = i + 10; print(i);} while (i < 50);}`, it will produces the output
+La machine virtuelle est terminée. Étant donné un programme, comme
+`{ i = 0; do { i = i + 10; print(i);} while (i < 50);}`, elle produira la
+sortie
 
 ```
 10
